@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fastrack Legal Digital HQ — v10</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0A0A"/>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js?v=1"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js?v=1"></script>
+<script src="https://unpkg.com/mammoth/mammoth.browser.min.js?v=1"></script>
+<style>
+:root{--bg:#0a0a0a;--glass:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.12);--text:#f8fafc;--muted:#b8c1cc;--cyan:#22d3ee;--orange:#f97316;--shadow:0 18px 40px rgba(0,0,0,.35)}
+*{box-sizing:border-box} html,body{height:100%}
+body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:
+ radial-gradient(1200px 800px at 10% -10%, rgba(34,211,238,.15), transparent 60%),
+ radial-gradient(1000px 700px at 110% 10%, rgba(249,115,22,.16), transparent 60%),
+ linear-gradient(180deg, #0a0a0a, #0f0f12);
+color:var(--text);
+display:grid;grid-template-columns:260px 1fr;grid-template-rows:64px 1fr;grid-template-areas:"sidebar header" "sidebar main";}
+header{grid-area:header;display:flex;align-items:center;justify-content:space-between;padding:8px 16px;border-bottom:1px solid var(--stroke);backdrop-filter:blur(10px);background:rgba(20,20,24,.35)}
+aside{grid-area:sidebar;border-right:1px solid var(--stroke);padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.04),transparent)}
+.nav{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.nav .cap{margin:12px 4px 6px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.nav button{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid transparent;border-radius:14px;background:transparent;color:var(--text);opacity:.92;cursor:pointer;transition:all .18s ease}
+.nav button:hover{background:rgba(255,255,255,.06)} .nav button.active{background:linear-gradient(90deg,var(--cyan),var(--orange));color:#111827;font-weight:800;box-shadow:0 10px 26px rgba(34,211,238,.25)}
+main{grid-area:main;padding:16px 18px 26px}
+.section{display:none;animation:fade .16s ease} .section.active{display:block}
+@keyframes fade{from{opacity:.6;transform:translateY(3px)}to{opacity:1;transform:none}}
+.card{background:var(--glass);border:1px solid var(--stroke);border-radius:18px;box-shadow:var(--shadow);padding:16px}
+.grid{display:grid;gap:14px} .grid-2{grid-template-columns:1fr 1fr} .grid-3{grid-template-columns:1fr 1fr 1fr}
+input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.02);color:var(--text);outline:none}
+.btn{cursor:pointer;padding:10px 14px;border-radius:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.02);color:var(--text);transition:all .15s ease}
+.btn.primary{background:linear-gradient(90deg,var(--cyan),var(--orange));color:#0b0b0b;border:none;font-weight:900}
+.list{max-height:62vh;overflow:auto;border-top:1px dashed var(--stroke)}
+.item{display:grid;grid-template-columns:1fr auto;gap:10px;padding:10px;border-bottom:1px dashed var(--stroke)}
+.small{font-size:12px;color:var(--muted)} .pill{padding:4px 9px;border-radius:999px;border:1px solid var(--stroke);font-size:12px;background:rgba(255,255,255,.04)}
+.toast{position:fixed;right:16px;bottom:16px;background:var(--glass);border:1px solid var(--stroke);padding:10px 12px;border-radius:12px;box-shadow:var(--shadow);opacity:0;transform:translateY(10px);transition:all .18s}
+.toast.show{opacity:1;transform:none}
+.hidden{display:none}
+@media(max-width:1100px){body{grid-template-columns:78px 1fr} .hide-sm{display:none} .grid-2,.grid-3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<aside>
+  <div class="nav">
+    <div class="cap">Core</div>
+    <button data-sec="tasks">📋 Tasks</button>
+    <button class="active" data-sec="research">🔎 Research</button>
+    <button data-sec="evidence">🧾 Evidence (PDF OCR)</button>
+    <button data-sec="acts">📚 Bare Acts</button>
+    <button data-sec="files">📁 Files</button>
+    <button data-sec="settings">⚙️ Settings</button>
+  </div>
+</aside>
+
+<header>
+  <div>Fastrack Legal HQ — v10</div>
+  <div class="small">Draft. File. Win. Repeat.</div>
+<button class="btn" id="btn_logout" style="margin-right:8px">Logout</button>
+<div class="small" id="hdr_user"></div>
+<button class="btn" id="btn_offline" style="margin-right:8px">Go Offline (test)</button>
+<button class="btn" id="btn_logout" style="margin-right:8px">Logout</button>
+</header>
+
+<main>
+  <section id="research" class="section active">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>AI Legal Research</h3>
+        <textarea id="rs_query" placeholder="Paste facts or draft paragraphs..."></textarea>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn primary" id="rs_citations">Find Citations</button>
+          <button class="btn" id="rs_issues">Extract Issues</button>
+          <button class="btn" id="rs_refine">Refine Draft</button>
+        </div>
+        <div class="small">Use a server proxy in Settings for production. Test key acceptable only locally.</div>
+      </div>
+      <div class="card">
+        <h3>Results</h3>
+        <textarea id="rs_out" style="min-height:320px"></textarea>
+        <div class="toolbar" style="margin-top:8px"><button class="btn" id="rs_export">Export .txt</button></div>
+      </div>
+    </div>
+  </section>
+
+  
+  <section id="tasks" class="section">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Create / Assign Task</h3>
+        <div class="grid grid-3">
+          <div><label>Title</label><input id="tk_title" placeholder="e.g., Draft WS in CS/123/2025"></div>
+          <div><label>Assignee (email)</label><input id="tk_assignee" placeholder="team@fastracklegal.in"></div>
+          <div><label>Due Date</label><input id="tk_due" type="date"></div>
+        </div>
+        <div class="grid grid-3" style="margin-top:8px">
+          <div><label>Priority</label>
+            <select id="tk_pri">
+              <option>Normal</option><option>High</option><option>Urgent</option>
+            </select>
+          </div>
+          <div><label>Related Matter (optional)</label><input id="tk_matter" placeholder="ABC v. State (482)"></div>
+          <div><label>Estimate (hrs)</label><input id="tk_est" type="number" min="0" step="0.5" placeholder="2.0"></div>
+        </div>
+        <div style="margin-top:8px"><label>Instructions</label><textarea id="tk_desc" placeholder="Key facts, reliefs sought, annexures to rely on..."></textarea></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn primary" id="tk_create">Create Task</button>
+          <button class="btn" id="tk_export">Export Tasks (.json)</button>
+          <label class="btn" for="tk_import">Import</label><input type="file" id="tk_import" class="hidden" accept="application/json">
+        </div>
+        <div class="small">Only Admin/Team can create tasks. Assignees will see buttons to Accept / Decline and update status.</div>
+<div class="grid grid-3" style="margin-top:8px"><div><label>Attach files</label><input id="tk_attach" type="file" multiple></div><div><label>Start Timer on Assign</label><select id="tk_timer_on_assign"><option>No</option><option>Yes</option></select></div><div><label>Billable Rate (₹/hr)</label><input id="tk_rate" type="number" min="0" step="100" placeholder="2000"></div></div>
+      </div>
+
+      <div class="card">
+        <h3>My Tasks</h3>
+        <div class="toolbar">
+          <select id="tk_filter_status">
+            <option value="">All</option>
+            <option>Assigned</option>
+            <option>Accepted</option>
+            <option>In Progress</option>
+            <option>Blocked</option>
+            <option>Completed</option>
+            <option>Declined</option>
+          </select>
+          <select id="tk_filter_me">
+            <option value="mine">Assigned to me</option>
+            <option value="">Everyone</option>
+          </select>
+        </div>
+        <div id="tk_list_mine" class="list"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <h3>All Tasks</h3>
+      <div id="tk_list_all" class="list"></div>
+    </div>
+  </section>
+
+  <section id="evidence" class="section">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>PDF Evidence OCR</h3>
+        <input type="file" id="ev_pdf" accept="application/pdf">
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn primary" id="ev_load">Load PDF</button>
+          <button class="btn" id="ev_ocr_all">OCR All Pages</button>
+          <button class="btn" id="ev_export_txt">Export Text</button>
+        </div>
+        <div class="small">First run needs internet to cache PDF.js/Tesseract.</div>
+        <div id="ev_status" class="small" style="margin-top:8px"></div>
+      </div>
+      <div class="card">
+        <h3>Recognized Text</h3>
+        <div class="toolbar"><input id="ev_find" placeholder="Search text…"><button class="btn" id="ev_find_btn">Find</button></div>
+        <textarea id="ev_text" style="min-height:300px"></textarea>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Pages</h3>
+      <div id="ev_pages" class="list" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(220px,1fr)); gap:10px"></div>
+    </div>
+  </section>
+
+  <section id="acts" class="section">
+    <div class="card">
+      <h3>Bare Acts Navigator</h3>
+      <div class="grid grid-3">
+        <div><label>Search</label><input id="ba_search" placeholder="e.g., 482 CrPC, 138 NI, Art. 226"></div>
+        <div><label>Act</label><select id="ba_act"></select></div>
+        <div class="toolbar" style="align-items:flex-end">
+          <button class="btn" id="ba_reset">Reset</button>
+          <button class="btn" id="ba_import">Import Acts Pack</button>
+          <button class="btn" id="ba_export">Export My Notes</button>
+        </div>
+      </div>
+    </div>
+    <div class="grid grid-2" style="margin-top:12px">
+      <div class="card">
+        <h3>Sections</h3>
+        <div id="ba_list" class="list"></div>
+      </div>
+      <div class="card">
+        <h3>Text & Notes</h3>
+        <div class="small" id="ba_meta"></div>
+        <textarea id="ba_text" style="min-height:300px"></textarea>
+        <div class="toolbar" style="margin-top:8px"><button class="btn primary" id="ba_save_note">Save Note</button></div>
+      </div>
+    </div>
+  </section>
+
+  
+  <section id="billing" class="section">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Billing Log</h3>
+        <div class="toolbar">
+          <button class="btn" id="bl_export">Export CSV</button>
+          <label class="btn" for="bl_import">Import</label><input id="bl_import" type="file" class="hidden" accept="text/csv,application/json">
+          <button class="btn" id="bl_clear">Clear</button>
+        </div>
+        <div id="bl_list" class="list"></div>
+      </div>
+      <div class="card">
+        <h3>Totals</h3>
+        <div id="bl_totals" class="small"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="files" class="section">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>Files</h3>
+        <input type="file" id="v_files" multiple>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn primary" id="v_add">Add to Vault</button>
+          <button class="btn" id="v_export">Export JSON</button>
+          <label class="btn" for="v_import">Import JSON</label><input type="file" id="v_import" class="hidden" accept="application/json">
+        </div>
+      </div>
+      <div class="card">
+        <h3>Vault</h3>
+        <div id="v_list" class="list"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h3>Exhibit Index</h3>
+      <div class="toolbar">
+        <button class="btn" id="ex_export_csv">Export CSV</button>
+        <button class="btn" id="ex_export_pdf">Export PDF</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="settings" class="section">
+    <div class="grid grid-2">
+      <div class="card"><h3>AI Settings</h3><label>AI Server Endpoint (OpenAI-compatible)</label><input id="s_ai" value="https://api.groq.com/openai/v1/chat/completions"><label>Model</label><input id="s_model" value="llama-3.1-70b-versatile"><label>API Key</label><input id="s_key" placeholder="sk-... (kept in browser only)"><div class="small">Tip: Paste your Groq API key. Endpoint is OpenAI-compatible. Model examples: llama-3.1-70b-versatile, llama-3.1-8b-instant.</div></div>
+      <div class="card"><h3>Appearance</h3><div class="small">Brand theme active.</div></div>
+    </div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script type="module">
+// No service worker to avoid caching issues in this rebuild.
+
+const S={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+const gid=id=>document.getElementById(id); const toast=msg=>{const t=gid('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),1600)};
+document.querySelectorAll('aside .nav button').forEach(b=> b.onclick=()=>{document.querySelectorAll('aside .nav button').forEach(x=>x.classList.remove('active')); b.classList.add('active'); document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); gid(b.dataset.sec).classList.add('active');});
+
+// ===== Research (GPT) =====
+async function gptChat(messages){
+  const s=S.get('SETTINGS',{});
+  try{
+    if(s.ai){
+      const r=await fetch(s.ai,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:(s.model||'llama-3.1-70b-versatile'),messages})});
+      const d=await r.json(); return d.choices?.[0]?.message?.content || d.output || JSON.stringify(d);
+    }else if(s.key){
+      const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.key},body:JSON.stringify({model:(s.model||'gpt-4o-mini'),messages,temperature:0.2})});
+      const d=await r.json(); return d.choices?.[0]?.message?.content || '';
+    }else{ toast('Add proxy or key in Settings'); return ''; }
+  }catch(err){ toast('GPT error: '+err.message); return ''; }
+}
+gid('rs_citations').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Enter text'); gid('rs_out').value=await gptChat([{role:'system',content:'You are an Indian legal research assistant. Suggest relevant case law & statutory provisions with one-line relevance. Bullet list.'},{role:'user',content:q.slice(0,6000)}]); };
+gid('rs_issues').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Enter text'); gid('rs_out').value=await gptChat([{role:'system',content:'Extract legal issues, burden of proof, and applicable standards. Numbered list.'},{role:'user',content:q.slice(0,6000)}]); };
+gid('rs_refine').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Paste draft'); gid('rs_out').value=await gptChat([{role:'system',content:'Rewrite in formal Indian legal style with clear headings; keep facts; remove verbosity.'},{role:'user',content:q.slice(0,6000)}]); };
+gid('rs_export').onclick=()=>{ const txt=gid('rs_out').value||''; const blob=new Blob([txt],{type:'text/plain'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='research.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+// Save settings
+(function(){ const s=S.get('SETTINGS',{});
+ gid('s_ai').value=(s.ai||'https://api.groq.com/openai/v1/chat/completions');
+ gid('s_model').value=(s.model||'llama-3.1-70b-versatile');
+ gid('s_key').value=s.key||'';
+ gid('s_ai').oninput=()=>S.set('SETTINGS',{...S.get('SETTINGS',{}), ai:gid('s_ai').value});
+ gid('s_model').oninput=()=>S.set('SETTINGS',{...S.get('SETTINGS',{}), model:gid('s_model').value});
+ gid('s_key').oninput=()=>S.set('SETTINGS',{...S.get('SETTINGS',{}), key:gid('s_key').value}); })();
+
+// ===== Evidence (PDF OCR) =====
+let EV_DOC=null, EV_TEXT='';
+gid('ev_load').onclick=async()=>{
+  const f=gid('ev_pdf').files[0]; if(!f) return toast('Pick a PDF');
+  const url=URL.createObjectURL(f);
+  try{
+    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.min.mjs');
+    const loadingTask = pdfjsLib.getDocument({url}); gid('ev_status').textContent='Loading PDF…';
+    EV_DOC = await loadingTask.promise; gid('ev_status').textContent = `Loaded ${EV_DOC.numPages} pages.`;
+    const pages = gid('ev_pages'); pages.innerHTML='';
+    for(let p=1;p<=EV_DOC.numPages;p++){
+      const page = await EV_DOC.getPage(p);
+      const viewport = page.getViewport({scale:0.8});
+      const canvas = document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; const ctx=canvas.getContext('2d');
+      await page.render({canvasContext:ctx, viewport}).promise;
+      const cell=document.createElement('div'); cell.className='card'; cell.style.padding='8px';
+      const btn=document.createElement('button'); btn.className='btn'; btn.textContent='OCR this page'; btn.onclick=()=>evOCRCanvas(canvas,p);
+      const cap=document.createElement('div'); cap.className='small'; cap.textContent='Page '+p;
+      cell.appendChild(canvas); cell.appendChild(cap); cell.appendChild(btn); pages.appendChild(cell);
+    }
+  }catch(err){ gid('ev_status').textContent='PDF load failed: '+err.message; } finally { URL.revokeObjectURL(url); }
+};
+async function evOCRCanvas(canvas, pageNo){
+  if(!window.Tesseract){ toast('Tesseract not loaded (needs internet once)'); return; }
+  gid('ev_status').textContent = `OCR page ${pageNo}…`;
+  try{
+    const dataURL=canvas.toDataURL('image/png');
+    const { data:{ text } } = await Tesseract.recognize(dataURL, 'eng'); // add 'hin' later
+    EV_TEXT += `\n\n--- Page ${pageNo} ---\n`+text; gid('ev_text').value=EV_TEXT; gid('ev_status').textContent=`Page ${pageNo} OCR done.`;
+  }catch(err){ gid('ev_status').textContent='OCR failed: '+err.message; }
+}
+gid('ev_ocr_all').onclick=async()=>{
+  if(!EV_DOC) return toast('Load a PDF first');
+  gid('ev_status').textContent='OCR all pages…';
+  for(let p=1;p<=EV_DOC.numPages;p++){
+    const page=await EV_DOC.getPage(p); const viewport=page.getViewport({scale:1.2});
+    const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; const ctx=canvas.getContext('2d');
+    await page.render({canvasContext:ctx, viewport}).promise;
+    await evOCRCanvas(canvas,p);
+  }
+  gid('ev_status').textContent='OCR all pages complete.';
+};
+gid('ev_export_txt').onclick=()=>{ const blob=new Blob([gid('ev_text').value||''],{type:'text/plain'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='evidence-ocr.txt'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+gid('ev_find_btn').onclick=()=>{ const q=(gid('ev_find').value||'').toLowerCase(); if(!q) return; const txt=(gid('ev_text').value||'').toLowerCase(); const i=txt.indexOf(q); if(i>=0){ gid('ev_text').focus(); gid('ev_text').setSelectionRange(i,i+q.length); }};
+
+// ===== Bare Acts Navigator =====
+let BA_MASTER=[];
+function baLoadLocal(){ return S.get('BA_NOTES', {}); }
+function baSaveLocal(v){ S.set('BA_NOTES', v); }
+async function baLoadMaster(){
+  try{ const res=await fetch('acts.json'); BA_MASTER=await res.json(); }catch(e){ BA_MASTER=[]; }
+  const acts=[...new Set(BA_MASTER.map(x=>x.act))].sort(); gid('ba_act').innerHTML='<option value=\"\">All</option>'+acts.map(a=>`<option>${a}</option>`).join(''); baRenderList();
+}
+function baRenderList(){
+  const q=(gid('ba_search').value||'').toLowerCase(), act=gid('ba_act').value; const list=gid('ba_list'); list.innerHTML='';
+  BA_MASTER.filter(s=> (!act || s.act===act) && (!q || s.section.toLowerCase().includes(q) || s.text.toLowerCase().includes(q))).slice(0,400).forEach(sec=>{
+    const div=document.createElement('div'); div.className='item'; div.innerHTML=`<div><b>${sec.section}</b> <span class="pill">${sec.act}</span><div class="small">${sec.text.slice(0,160)}…</div></div>`;
+    const r=document.createElement('div'); const btn=document.createElement('button'); btn.className='btn'; btn.textContent='Open';
+    btn.onclick=()=>{ gid('ba_meta').textContent=`${sec.act} • ${sec.section}`; gid('ba_meta').dataset.key=`${sec.act}|${sec.section}`; gid('ba_text').value=sec.text+'\n\n-- My notes --\n'+(baLoadLocal()[`${sec.act}|${sec.section}`]||''); };
+    r.appendChild(btn); div.appendChild(r); list.appendChild(div);
+  });
+}
+gid('ba_search').oninput=baRenderList; gid('ba_act').onchange=baRenderList;
+gid('ba_reset').onclick=()=>{ gid('ba_search').value=''; gid('ba_act').value=''; baRenderList(); };
+gid('ba_save_note').onclick=()=>{ const key=gid('ba_meta').dataset.key; if(!key) return; const txt=gid('ba_text').value; const parts=txt.split('\\n\\n-- My notes --\\n'); const note=(parts[1]||'').trim(); const m=baLoadLocal(); m[key]=note; baSaveLocal(m); toast('Saved notes'); };
+gid('ba_import').onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange=async(e)=>{ const f=e.target.files[0]; if(!f)return; try{ const arr=JSON.parse(await f.text()); if(Array.isArray(arr)){ BA_MASTER=BA_MASTER.concat(arr); baLoadMaster(); toast('Acts imported'); } }catch(err){ toast('Import failed'); } }; inp.click(); };
+gid('ba_export').onclick=()=>{ const blob=new Blob([JSON.stringify(baLoadLocal(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='bare-acts-notes.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+baLoadMaster();
+
+// ===== Files + Exhibits =====
+function filesLoad(){return S.get('VAULT',[])}
+function filesSave(v){S.set('VAULT',v)}
+function vRender(){ const l=gid('v_list'); l.innerHTML=''; filesLoad().slice().reverse().forEach((f,i)=>{ const div=document.createElement('div'); div.className='item'; const meta=`${f.type||'file'} • ${(f.size||0)} bytes${f.exhibit&&f.exhibit.code?(' • '+f.exhibit.code):''}`; div.innerHTML=`<div><b>${f.name}</b><div class="small">${meta}</div></div>`; const r=document.createElement('div'); const bt=document.createElement('button'); bt.className='btn'; bt.textContent='Exhibit'; bt.onclick=()=> editExhibit(f.name); r.appendChild(bt); div.appendChild(r); l.appendChild(div); }); }
+gid('v_add').onclick=async()=>{ const fs=gid('v_files').files; if(!fs?.length) return toast('Choose files'); const arr=filesLoad(); for(const f of fs){ const b64=await new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(f); }); arr.push({name:f.name,type:f.type,size:f.size,data:b64,exhibit:{side:'Plaintiff',code:'',notes:''}}); } filesSave(arr); vRender(); };
+gid('v_export').onclick=()=>{ const blob=new Blob([JSON.stringify(filesLoad(),null,2)],{type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='vault.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+gid('v_import').onchange=async(e)=>{ const f=e.target.files[0]; if(!f)return; try{ const arr=JSON.parse(await f.text()); filesSave(arr); vRender(); toast('Imported'); }catch(err){ toast('Import failed'); } e.target.value=''; };
+
+function editExhibit(name){
+  const arr=filesLoad(); const rec=arr.find(x=>x.name===name); if(!rec) return;
+  const side=prompt('Side (Plaintiff/Defendant):', rec.exhibit?.side||'Plaintiff')||'Plaintiff';
+  let code=prompt('Exhibit Code (e.g., A-1 or D-3):', rec.exhibit?.code||'')||'';
+  const notes=prompt('Notes:', rec.exhibit?.notes||'')||'';
+  if(!code){ code = side.startsWith('P')?'A-1':'D-1'; }
+  rec.exhibit={side, code, notes}; filesSave(arr); vRender();
+}
+function exRows(){ return filesLoad().filter(f=>f.exhibit&&f.exhibit.code).map(f=>({code:f.exhibit.code, side:f.exhibit.side, name:f.name, size:f.size, notes:f.exhibit.notes||''})); }
+gid('ex_export_csv').onclick=()=>{ const rows=exRows(); if(!rows.length) return toast('No exhibits'); const csv=['Code,Side,File,Size,Notes'].concat(rows.map(r=>`"${r.code}","${r.side}","${r.name}",${r.size},"${r.notes.replace(/"/g,'""')}"`)).join('\n'); const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='exhibit-index.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500); };
+gid('ex_export_pdf').onclick=()=>{ const rows=exRows(); if(!rows.length) return toast('No exhibits'); const {jsPDF}=window.jspdf||{}; if(!jsPDF) return toast('jsPDF missing'); const doc=new jsPDF({unit:'pt',format:'a4'}); let y=40; doc.text('Exhibit Index — Fastrack Legal Solutions LLP',40,y); y+=20; rows.forEach(r=>{ if(y>780){ doc.addPage(); y=40; } doc.text(`${r.code} | ${r.side} | ${r.name} | ${r.size} bytes | ${r.notes}`,40,y); y+=16; }); doc.save('exhibit-index.pdf'); };
+
+
+// ===== v11 combined features =====
+
+// GPT helpers
+async function gptChat_v11(messages){
+  const s=S.get('SETTINGS',{});
+  try{
+    if(s.ai){
+      const r=await fetch(s.ai,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:(s.model||'llama-3.1-70b-versatile'),messages})});
+      const d=await r.json(); return d.choices?.[0]?.message?.content || d.output || JSON.stringify(d);
+    }else if(s.key){
+      const r=await fetch('https://api.openai.com/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+s.key},body:JSON.stringify({model:(s.model||'gpt-4o-mini'),messages,temperature:0.2})});
+      const d=await r.json(); return d.choices?.[0]?.message?.content || '';
+    }else{ toast('Add proxy or key in Settings'); return ''; }
+  }catch(err){ toast('GPT error: '+err.message); return ''; }
+}
+if(gid('rs_citations')){
+  gid('rs_citations').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Enter text'); gid('rs_out').value=await gptChat_v11([{role:'system',content:'You are an Indian legal research assistant. Suggest relevant statutes & case law with one-line relevance. Bullet list.'},{role:'user',content:q.slice(0,6000)}]); };
+  gid('rs_issues').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Enter text'); gid('rs_out').value=await gptChat_v11([{role:'system',content:'Extract legal issues, burden of proof, standards. Numbered list.'},{role:'user',content:q.slice(0,6000)}]); };
+  gid('rs_refine').onclick=async()=>{ const q=gid('rs_query').value.trim(); if(!q) return toast('Paste draft'); gid('rs_out').value=await gptChat_v11([{role:'system',content:'Rewrite in formal Indian legal style with clear headings; keep facts; remove verbosity.'},{role:'user',content:q.slice(0,6000)}]); };
+  gid('rs_export').onclick=()=> dl('research.txt', gid('rs_out').value||'', 'text/plain');
+}
+
+// Evidence OCR
+let EV_DOC=null, EV_TEXT='';
+async function evOCRCanvas_v11(canvas, pageNo){
+  if(!window.Tesseract){ toast('Tesseract not loaded (needs internet once)'); return; }
+  gid('ev_status').textContent = `OCR page ${pageNo}…`;
+  try{
+    const dataURL=canvas.toDataURL('image/png');
+    const { data:{ text } } = await Tesseract.recognize(dataURL, 'eng');
+    EV_TEXT += `\n\n--- Page ${pageNo} ---\n`+text; gid('ev_text').value=EV_TEXT; gid('ev_status').textContent=`Page ${pageNo} OCR done.`;
+  }catch(err){ gid('ev_status').textContent='OCR failed: '+err.message; }
+}
+if(gid('ev_load')){
+  gid('ev_load').onclick=async()=>{
+    const f=gid('ev_pdf').files[0]; if(!f) return toast('Pick a PDF');
+    const url=URL.createObjectURL(f);
+    try{
+      const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.3.136/pdf.min.mjs');
+      const loadingTask = pdfjsLib.getDocument({url}); gid('ev_status').textContent='Loading PDF…';
+      EV_DOC = await loadingTask.promise; gid('ev_status').textContent = `Loaded ${EV_DOC.numPages} pages.`;
+      const pages = gid('ev_pages'); pages.innerHTML='';
+      for(let p=1;p<=EV_DOC.numPages;p++){
+        const page = await EV_DOC.getPage(p); const viewport = page.getViewport({scale:0.8});
+        const canvas = document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; const ctx=canvas.getContext('2d');
+        await page.render({canvasContext:ctx, viewport}).promise;
+        const cell=document.createElement('div'); cell.className='card'; cell.style.padding='8px';
+        const btn=document.createElement('button'); btn.className='btn'; btn.textContent='OCR this page'; btn.onclick=()=>evOCRCanvas_v11(canvas,p);
+        const cap=document.createElement('div'); cap.className='small'; cap.textContent='Page '+p;
+        cell.appendChild(canvas); cell.appendChild(cap); cell.appendChild(btn); pages.appendChild(cell);
+      }
+    }catch(err){ gid('ev_status').textContent='PDF load failed: '+err.message; } finally { URL.revokeObjectURL(url); }
+  };
+  gid('ev_ocr_all').onclick=async()=>{
+    if(!EV_DOC) return toast('Load a PDF first');
+    gid('ev_status').textContent='OCR all pages…';
+    for(let p=1;p<=EV_DOC.numPages;p++){
+      const page=await EV_DOC.getPage(p); const viewport=page.getViewport({scale:1.2});
+      const canvas=document.createElement('canvas'); canvas.width=viewport.width; canvas.height=viewport.height; const ctx=canvas.getContext('2d');
+      await page.render({canvasContext:ctx, viewport}).promise;
+      await evOCRCanvas_v11(canvas,p);
+    }
+    gid('ev_status').textContent='OCR all pages complete.';
+  };
+  gid('ev_export_txt').onclick=()=> dl('evidence-ocr.txt', gid('ev_text').value||'', 'text/plain');
+  gid('ev_find_btn').onclick=()=>{ const q=(gid('ev_find').value||'').toLowerCase(); if(!q) return; const txt=(gid('ev_text').value||'').toLowerCase(); const i=txt.indexOf(q); if(i>=0){ gid('ev_text').focus(); gid('ev_text').setSelectionRange(i,i+q.length); }};
+}
+
+// Bare Acts
+let BA_MASTER=[];
+async function baLoadMaster_v11(){
+  try{ const res = await fetch('acts.json'); BA_MASTER = await res.json(); }catch(e){ BA_MASTER=[]; }
+  const acts=[...new Set(BA_MASTER.map(x=>x.act))].sort();
+  if(gid('ba_act')) gid('ba_act').innerHTML = '<option value=\"\">All</option>'+acts.map(a=>`<option>${a}</option>`).join('');
+  baRenderList_v11();
+}
+function baNotesLoad(){ return S.get('BA_NOTES',{}); }
+function baNotesSave(v){ S.set('BA_NOTES',v); }
+function baRenderList_v11(){
+  const list=gid('ba_list'); if(!list) return;
+  const q=(gid('ba_search')?.value||'').toLowerCase(), act=(gid('ba_act')?.value||'');
+  list.innerHTML='';
+  BA_MASTER.filter(s=> (!act || s.act===act) && (!q || s.section.toLowerCase().includes(q) || s.text.toLowerCase().includes(q))).slice(0,400).forEach(sec=>{
+    const div=document.createElement('div'); div.className='item';
+    div.innerHTML=`<div><b>${sec.section}</b> <span class="pill">${sec.act}</span><div class="small">${sec.text.slice(0,160)}…</div></div>`;
+    const r=document.createElement('div'); const b=btn('Open',()=>{ gid('ba_meta').textContent = `${sec.act} • ${sec.section}`; gid('ba_meta').dataset.key=`${sec.act}|${sec.section}`; gid('ba_text').value = sec.text + '\\n\\n-- My notes --\\n' + (baNotesLoad()[`${sec.act}|${sec.section}`]||''); }); r.appendChild(b); div.appendChild(r); list.appendChild(div);
+  });
+}
+if(gid('ba_search')){
+  gid('ba_search').oninput=baRenderList_v11; gid('ba_act').onchange=baRenderList_v11;
+  gid('ba_reset').onclick=()=>{ gid('ba_search').value=''; gid('ba_act').value=''; baRenderList_v11(); };
+  gid('ba_save_note').onclick=()=>{ const key=gid('ba_meta').dataset.key; if(!key) return; const txt=gid('ba_text').value; const parts=txt.split('\\n\\n-- My notes --\\n'); const note=(parts[1]||'').trim(); const m=baNotesLoad(); m[key]=note; baNotesSave(m); toast('Saved notes'); };
+  gid('ba_import').onclick=()=>{ const inp=document.createElement('input'); inp.type='file'; inp.accept='application/json'; inp.onchange=async(e)=>{ const f=e.target.files[0]; if(!f)return; try{ const arr=JSON.parse(await f.text()); if(Array.isArray(arr)){ BA_MASTER=BA_MASTER.concat(arr); baLoadMaster_v11(); toast('Acts imported'); } }catch(err){ toast('Import failed'); } }; inp.click(); };
+  gid('ba_export').onclick=()=> dl('bare-acts-notes.json', JSON.stringify(baNotesLoad(),null,2), 'application/json');
+  baLoadMaster_v11();
+}
+
+
+// ===== Logout =====
+(function(){
+  const b=document.getElementById('btn_logout');
+  if(b){ b.onclick=()=>{ localStorage.removeItem('SESSION'); location.href='auth.html'; }; }
+})();
+
+
+// ===== Tasks: Assignment, Acceptance & Updates (v13) =====
+const TK_KEY='TASKS_DB';
+function tkLoad(){ return S.get(TK_KEY, []); }
+function tkSave(v){ S.set(TK_KEY, v); }
+
+function tkSession(){ try{return JSON.parse(localStorage.getItem('SESSION'))}catch(e){return null} }
+function tkIsAdmin(){ const r=tkSession()?.role; return r==='Admin' || r==='Team'; }
+function tkIsClient(){ return tkSession()?.role==='Client'; }
+function tkMe(){ return (tkSession()?.email||'').toLowerCase(); }
+
+function tkCreate(){
+  if(!tkIsAdmin()){ toast('Only Admin/Team can create tasks'); return; }
+  const t={
+    id:'T'+Date.now(),
+    title: gid('tk_title').value.trim(),
+    assignee: gid('tk_assignee').value.trim().toLowerCase(),
+    due: gid('tk_due').value,
+    priority: gid('tk_pri').value,
+    matter: gid('tk_matter').value.trim(),
+    est: parseFloat(gid('tk_est').value||'0')||0,
+    desc: gid('tk_desc').value.trim(),
+    status: 'Assigned',
+    createdBy: tkMe(),
+    createdTs: Date.now(),
+    acceptedTs: 0, startedTs: 0, completedTs: 0, declinedTs: 0,
+    comments: [],
+    history: [{ts:Date.now(), by:tkMe(), action:'Created & Assigned'}]
+  };
+  if(!t.title || !t.assignee){ toast('Title and Assignee are required'); return; }
+  const db=tkLoad(); db.push(t); tkSave(db); toast('Task created'); tkRender(); tkClearForm();
+}
+function tkClearForm(){ ['tk_title','tk_assignee','tk_due','tk_matter','tk_est','tk_desc'].forEach(id=>{const el=gid(id); if(el) el.value='';}); gid('tk_pri').value='Normal'; }
+
+function tkRender(){
+  const db=tkLoad();
+  const mine=gid('tk_list_mine'); const all=gid('tk_list_all');
+  mine.innerHTML=''; all.innerHTML='';
+
+  const me=tkMe(); const fs=gid('tk_filter_status').value; const fme=gid('tk_filter_me').value==='mine';
+  const rowsMine=db.filter(t=> !tkIsClient() ? (fme? t.assignee===me : true) : (t.assignee===me) )
+    .filter(t=> !fs || t.status===fs);
+  const rowsAll=db.filter(t=> !tkIsClient()); // clients don't see All tasks
+
+  rowsMine.sort((a,b)=> (a.status===b.status ? (a.due||'').localeCompare(b.due||'') : a.status.localeCompare(b.status)));
+  rowsAll.sort((a,b)=> (a.due||'').localeCompare(b.due||''));
+
+  rowsMine.forEach(t=> mine.appendChild(tkRow(t, true)));
+  rowsAll.forEach(t=> all.appendChild(tkRow(t, false)));
+}
+
+function tkRow(t, isMine){
+  const div=document.createElement('div'); div.className='item';
+  const badge = `<span class="pill">${esc(t.status)}</span> <span class="pill">${esc(t.priority)}</span>${t.due?` <span class="pill">Due: ${esc(t.due)}</span>`:''}`;
+  const meta = `${t.matter?esc(t.matter)+' • ':''}${t.assignee} • est ${t.est||0}h`;
+  div.innerHTML = `<div><b>${esc(t.title)}</b><div class="small">${badge}</div><div class="small">${meta}</div></div>`;
+  const r=document.createElement('div');
+
+  // Acceptance/Decline for assignee on Assigned
+  if(isMine && t.assignee===tkMe() && t.status==='Assigned'){
+    r.appendChild(btn('Accept', ()=> tkAccept(t.id)));
+    r.appendChild(btn('Decline',()=> tkDecline(t.id)));
+  }
+  // Status updates for assignee (or admin)
+  if(isMine && (t.assignee===tkMe() || tkIsAdmin())){
+    const sel=document.createElement('select');
+    ['Assigned','Accepted','In Progress','Blocked','Completed','Declined'].forEach(s=>{
+      const o=document.createElement('option'); o.textContent=s; o.selected=(t.status===s); sel.appendChild(o);
+    });
+    sel.onchange=()=> tkUpdateStatus(t.id, sel.value);
+    r.appendChild(sel);
+  }
+  r.appendChild(btn('Comment', ()=> tkComment(t.id)));
+  r.appendChild(btn('Log', ()=> tkShowLog(t.id)));
+  if(tkIsAdmin()) r.appendChild(btn('Delete', ()=> tkDelete(t.id)));
+  div.appendChild(r);
+  return div;
+}
+
+function tkById(id){ return tkLoad().find(x=>x.id===id); }
+function tkSaveById(id, mut){
+  const db=tkLoad(); const i=db.findIndex(x=>x.id===id); if(i<0) return;
+  const t=db[i]; mut(t); db[i]=t; tkSave(db); tkRender();
+}
+
+function tkAccept(id){
+  tkSaveById(id, t=>{ t.status='Accepted'; t.acceptedTs=Date.now(); t.history.push({ts:Date.now(), by:tkMe(), action:'Accepted'}); });
+  toast('Task accepted');
+}
+function tkDecline(id){
+  tkSaveById(id, t=>{ t.status='Declined'; t.declinedTs=Date.now(); t.history.push({ts:Date.now(), by:tkMe(), action:'Declined'}); });
+  toast('Task declined');
+}
+function tkUpdateStatus(id, status){
+  const allowed=['Assigned','Accepted','In Progress','Blocked','Completed','Declined'];
+  if(!allowed.includes(status)) return;
+  tkSaveById(id, t=>{
+    t.status=status;
+    if(status==='In Progress' && !t.startedTs) t.startedTs=Date.now();
+    if(status==='Completed') t.completedTs=Date.now();
+    t.history.push({ts:Date.now(), by:tkMe(), action:'Status → '+status});
+  });
+  toast('Status updated');
+}
+function tkComment(id){
+  const text = prompt('Add comment'); if(!text) return;
+  tkSaveById(id, t=>{ t.comments.push({by:tkMe(), ts:Date.now(), text}); t.history.push({ts:Date.now(), by:tkMe(), action:'Comment added'}); });
+}
+function tkShowLog(id){
+  const t=tkById(id); if(!t) return;
+  const lines = (t.history||[]).map(h=> new Date(h.ts).toLocaleString()+' — '+h.by+' — '+h.action).join('\n');
+  alert((t.title||'Task')+'\n\nHistory:\n'+lines);
+}
+function tkDelete(id){
+  if(!confirm('Delete this task?')) return;
+  const db=tkLoad().filter(x=>x.id!==id); tkSave(db); tkRender(); toast('Task deleted');
+}
+
+// Filters & buttons
+(function tkInit(){
+  const me=gid('tk_filter_me'); if(me) me.value='mine';
+  if(gid('tk_create')) gid('tk_create').onclick = tkCreate;
+  if(gid('tk_export')) gid('tk_export').onclick = ()=>{
+    const db=tkLoad(); const blob=new Blob([JSON.stringify(db,null,2)],{type:'application/json'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='tasks.json'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+  if(gid('tk_import')) gid('tk_import').onchange = async(e)=>{
+    const f=e.target.files[0]; if(!f) return; try{ const arr=JSON.parse(await f.text()); if(Array.isArray(arr)){ tkSave(arr); tkRender(); toast('Imported'); }}catch(err){ toast('Import failed'); } e.target.value='';
+  };
+  ['tk_filter_status','tk_filter_me'].forEach(id=>{ const el=gid(id); if(el) el.onchange=tkRender; });
+  tkRender();
+})();
+
+
+// ===== v14: Timers, Attachments, Mentions, Billing, Offline Test =====
+const BILL_KEY='BILL_LOG';
+function billLoad(){ return S.get(BILL_KEY, []); }
+function billSave(v){ S.set(BILL_KEY, v); }
+function billAdd({taskId,title,assignee,minutes,rate}){
+  const amt = Math.round((minutes/60)*(rate||0));
+  const rec = {ts:Date.now(), taskId, title, assignee, minutes, rate, amount:amt};
+  const db=billLoad(); db.push(rec); billSave(db); billRender();
+}
+function billRender(){
+  const list=gid('bl_list'); if(!list) return;
+  const db=billLoad().slice().reverse();
+  list.innerHTML='';
+  let total=0;
+  db.forEach(r=>{
+    total += r.amount||0;
+    const div=document.createElement('div'); div.className='item';
+    div.innerHTML = `<div><b>${esc(r.title)}</b><div class="small">${new Date(r.ts).toLocaleString()} • ${r.assignee} • ${r.minutes} mins @ ₹${r.rate}/hr</div></div><div class="small">₹ ${r.amount}</div>`;
+    list.appendChild(div);
+  });
+  const mins = db.reduce((a,b)=>a+(b.minutes||0),0);
+  gid('bl_totals').textContent = `Entries: ${db.length} • Total time: ${mins} mins • Total bill: ₹ ${total}`;
+}
+if(gid('bl_export')){
+  gid('bl_export').onclick=()=>{
+    const db=billLoad();
+    const header='ts,taskId,title,assignee,minutes,rate,amount\\n';
+    const rows=db.map(r=>[r.ts,r.taskId,`"${(r.title||'').replace('"','""')}"`,r.assignee,r.minutes,r.rate,r.amount].join(','));
+    const csv=header+rows.join('\\n');
+    const blob=new Blob([csv],{type:'text/csv'}); const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); a.href=url; a.download='billing.csv'; a.click(); setTimeout(()=>URL.revokeObjectURL(url),500);
+  };
+  gid('bl_import').onchange=async(e)=>{ const f=e.target.files[0]; if(!f) return; const txt=await f.text(); try{ if(f.type==='application/json'){ billSave(JSON.parse(txt)); } else { /* naive CSV parse */ const lines=txt.trim().split(/\\r?\\n/).slice(1); const arr=lines.map(l=>{const p=l.split(','); return {ts:+p[0],taskId:p[1],title:p[2]?.replace(/^"|"$/g,''),assignee:p[3],minutes:+p[4],rate:+p[5],amount:+p[6]};}); billSave(arr);} billRender(); }catch(err){ toast('Import failed'); } e.target.value=''; };
+  gid('bl_clear').onclick=()=>{ if(confirm('Clear billing log?')){ billSave([]); billRender(); } };
+  billRender();
+}
+
+// Mentions & notifications (in-app)
+function notifyUser(email, message){
+  // Simple in-app toast for now. Backend webhooks can be wired later.
+  toast(`@${email}: ${message}`);
+}
+
+// Extend Tasks: store attachments, timer
+function tkNow(){ return Date.now(); }
+function tkStartTimer(id){
+  const db=tkLoad(); const i=db.findIndex(x=>x.id===id); if(i<0) return;
+  const t=db[i]; if(t.timer?.running) return toast('Timer already running');
+  t.timer = {running:true, start:tkNow(), elapsed:(t.timer?.elapsed||0)};
+  t.history.push({ts:tkNow(), by:tkMe(), action:'Timer started'});
+  tkSave(db); tkRender();
+}
+function tkStopTimer(id, bill=true){
+  const db=tkLoad(); const i=db.findIndex(x=>x.id===id); if(i<0) return;
+  const t=db[i]; if(!t.timer?.running) return toast('Timer not running');
+  const delta = Math.max(0, Math.floor((tkNow()-t.timer.start)/60000));
+  t.timer.running=false; t.timer.elapsed=(t.timer.elapsed||0)+delta;
+  t.history.push({ts:tkNow(), by:tkMe(), action:`Timer stopped (+${delta}m)`});
+  tkSave(db); tkRender();
+  if(bill){ billAdd({taskId:t.id,title:t.title,assignee:t.assignee,minutes:delta,rate:t.rate||0}); }
+}
+function tkAttachFiles(id, fileList){
+  const db=tkLoad(); const i=db.findIndex(x=>x.id===id); if(i<0) return;
+  const t=db[i]; t.attachments = t.attachments || [];
+  const promises = Array.from(fileList||[]).map(f=> new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res({name:f.name,size:f.size,type:f.type,data:r.result}); r.onerror=rej; r.readAsDataURL(f);}));
+  Promise.all(promises).then(arr=>{
+    t.attachments = t.attachments.concat(arr);
+    t.history.push({ts:tkNow(), by:tkMe(), action:`Attached ${arr.length} file(s)`});
+    tkSave(db); tkRender();
+  }).catch(()=> toast('Attachment failed'));
+}
+
+// Override tkCreate to include attachments, rate, and auto-start timer
+if(typeof tkCreate==='function'){
+  const _tkCreate = tkCreate;
+  tkCreate = function(){
+    if(!tkIsAdmin()){ toast('Only Admin/Team can create tasks'); return; }
+    const before = tkLoad().length;
+    _tkCreate(); // creates the last task with fields set by UI
+    // Fetch last task
+    const db=tkLoad(); const t=db[db.length-1];
+    if(!t) return;
+    t.rate = parseFloat(gid('tk_rate').value||'0')||0;
+    t.timer = {running:false, start:0, elapsed:0};
+    // Attach files if any
+    const fl = gid('tk_attach').files; if(fl && fl.length){ tkAttachFiles(t.id, fl); gid('tk_attach').value=''; }
+    tkSave(db); tkRender();
+    // Auto-start timer if selected
+    if((gid('tk_timer_on_assign').value||'No')==='Yes'){ tkStartTimer(t.id); }
+  }
+}
+
+// Extend row renderer to show timer & attachments & comment with mentions
+(function(){
+  const _tkRow = tkRow;
+  tkRow = function(t, isMine){
+    const div = _tkRow(t, isMine);
+    // Timer controls for assignee/admin
+    if(isMine && (t.assignee===tkMe() || tkIsAdmin())){
+      const controls = document.createElement('div'); controls.className='small';
+      const running = t.timer?.running;
+      const elapsed = t.timer?.elapsed||0;
+      controls.innerHTML = `Time: ${elapsed} mins ${running?'(running)': ''} `;
+      const b1 = document.createElement('button'); b1.className='btn'; b1.textContent='Start'; b1.onclick=()=> tkStartTimer(t.id);
+      const b2 = document.createElement('button'); b2.className='btn'; b2.textContent='Stop + Bill'; b2.onclick=()=> tkStopTimer(t.id,true);
+      const b3 = document.createElement('button'); b3.className='btn'; b3.textContent='Stop (no bill)'; b3.onclick=()=> tkStopTimer(t.id,false);
+      controls.appendChild(b1); controls.appendChild(b2); controls.appendChild(b3);
+      div.appendChild(controls);
+    }
+    // Attachments list
+    if(t.attachments?.length){
+      const at = document.createElement('div'); at.className='small'; at.textContent = `Attachments: ${t.attachments.map(a=>a.name).join(', ')}`;
+      div.appendChild(at);
+    }
+    // Mentions in comments -> in-app notify
+    const commentBtn = div.querySelector('button:nth-last-child(3)'); // 'Comment' button
+    if(commentBtn){
+      const old = commentBtn.onclick;
+      commentBtn.onclick = ()=>{
+        const text = prompt('Add comment (use @email to mention)'); if(!text) return;
+        const mentions = (text.match(/@[\w\.\-\+]+@?[\w\.\-]*/g)||[]).map(s=>s.replace(/^@/,'').toLowerCase());
+        tkSaveById(t.id, T=>{ T.comments.push({by:tkMe(), ts:Date.now(), text}); T.history.push({ts:Date.now(), by:tkMe(), action:'Comment: '+text.slice(0,60)}); });
+        mentions.forEach(m=> notifyUser(m, `mentioned you on task "${t.title}"`));
+      };
+    }
+    return div;
+  }
+})();
+
+// Offline test
+if(gid('btn_offline')) gid('btn_offline').onclick=()=>{ caches.keys().then(keys=> keys.forEach(k=>caches.delete(k))); toast('Cache cleared. Reload, then go offline to test.'); };
+
+// Put user label in header
+(function(){
+  const session = JSON.parse(localStorage.getItem('SESSION')||'null');
+  const hdr = document.getElementById('hdr_user'); if(hdr && session){ hdr.textContent = `${session.role} — ${session.name||session.email}`; }
+})();
+
+</script>
+</body>
+</html>

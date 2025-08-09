@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Fastrack Legal HQ — Sign in</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0A0A0A"/>
+<style>
+:root{--bg:#0a0a0a;--glass:rgba(255,255,255,.06);--stroke:rgba(255,255,255,.12);--text:#f8fafc;--muted:#b8c1cc;--cyan:#22d3ee;--orange:#f97316}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial;background:
+ radial-gradient(1200px 800px at 10% -10%, rgba(34,211,238,.15), transparent 60%),
+ radial-gradient(1000px 700px at 110% 10%, rgba(249,115,22,.16), transparent 60%),
+ linear-gradient(180deg, #0a0a0a, #0f0f12);color:var(--text);display:grid;place-items:center;min-height:100vh}
+.card{width:min(520px,92vw);background:rgba(255,255,255,.06);border:1px solid var(--stroke);border-radius:18px;box-shadow:0 18px 40px rgba(0,0,0,.35);padding:22px}
+h1{margin:0 0 10px 0} .muted{color:var(--muted)} .tabs{display:flex;gap:8px;margin:10px 0 18px}
+.tab{flex:1;text-align:center;padding:10px;border-radius:12px;border:1px solid var(--stroke);cursor:pointer}
+.tab.active{background:linear-gradient(90deg,var(--cyan),var(--orange));color:#111827;font-weight:800}
+.grid{display:grid;gap:12px} .grid-2{grid-template-columns:1fr 1fr}
+input,select{width:100%;padding:12px;border-radius:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.02);color:var(--text);outline:none}
+.btn{cursor:pointer;padding:12px;border-radius:12px;border:1px solid var(--stroke);background:rgba(255,255,255,.02);color:var(--text)}
+.btn.primary{background:linear-gradient(90deg,var(--cyan),var(--orange));color:#0b0b0b;border:none;font-weight:900}
+.small{font-size:12px;color:var(--muted)}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo"><img src="icon-192.png" width="28" height="28"/><div><b>Fastrack Legal Solutions</b><div class="small">Digital HQ — Access</div></div></div>
+    <h1 id="title">Welcome</h1>
+    <div class="small" id="subtitle">Sign in to continue. If this is your first time, create the Admin account.</div>
+
+    <div class="tabs">
+      <div class="tab active" id="tab_login">Login</div>
+      <div class="tab" id="tab_signup">Signup</div>
+    </div>
+
+    <div id="view_login">
+      <div class="grid">
+        <input id="li_email" placeholder="Email">
+        <input id="li_pass" type="password" placeholder="Password">
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="li_rem"> <span class="small">Remember me</span></label>
+        <button class="btn primary" id="li_btn">Login</button>
+      </div>
+    </div>
+
+    <div id="view_signup" style="display:none">
+      <div class="grid grid-2">
+        <input id="su_name" placeholder="Full Name">
+        <select id="su_role">
+          <option>Client</option>
+          <option>Team</option>
+          <option>Admin</option>
+        </select>
+      </div>
+      <div class="grid">
+        <input id="su_email" placeholder="Email">
+        <input id="su_phone" placeholder="Mobile (optional)">
+        <input id="su_pass" type="password" placeholder="Password">
+        <input id="su_pass2" type="password" placeholder="Confirm Password">
+        <label style="display:flex;align-items:center;gap:8px"><input type="checkbox" id="su_terms"> <span class="small">I agree to Terms & Privacy</span></label>
+        <button class="btn primary" id="su_btn">Create Account</button>
+      </div>
+      <div class="small" id="first_hint" style="margin-top:8px"></div>
+    </div>
+
+    <div class="small" id="msg" style="margin-top:10px"></div>
+  </div>
+
+<script>
+const S={get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
+const gid=id=>document.getElementById(id); const msg=t=>{gid('msg').textContent=t};
+
+// Tabs
+function show(tab){ gid('tab_login').classList.toggle('active',tab==='login'); gid('tab_signup').classList.toggle('active',tab==='signup'); gid('view_login').style.display=(tab==='login')?'block':'none'; gid('view_signup').style.display=(tab==='signup')?'block':'none'; }
+gid('tab_login').onclick=()=>show('login'); gid('tab_signup').onclick=()=>show('signup');
+
+// First-run onboarding
+(function(){
+  const users=S.get('USERS',[]);
+  if(!users.length){
+    show('signup'); gid('su_role').value='Admin'; gid('su_role').disabled=true;
+    gid('first_hint').textContent='No users found. Create the Admin account to initialize the system.';
+    gid('title').textContent='Initial Setup'; gid('subtitle').textContent='Create the first Admin user.';
+  }
+})();
+
+// Signup
+gid('su_btn').onclick=()=>{
+  const name=gid('su_name').value.trim(), email=gid('su_email').value.trim().toLowerCase(), phone=gid('su_phone').value.trim();
+  const role=gid('su_role').value, p1=gid('su_pass').value, p2=gid('su_pass2').value, terms=gid('su_terms').checked;
+  if(!name||!email||!p1||!p2) return msg('All fields except mobile are required.');
+  if(p1!==p2) return msg('Passwords do not match.');
+  if(!terms) return msg('Please accept Terms & Privacy.');
+  const users=S.get('USERS',[]);
+  if(users.some(u=>u.email===email)) return msg('Email already registered.');
+  users.push({name,email,phone,role,pass:p1,created:Date.now()});
+  S.set('USERS',users);
+  S.set('SESSION',{email,role,name,ts:Date.now()});
+  msg('Account created. Redirecting...'); setTimeout(()=> location.href='index.html', 600);
+};
+
+// Login
+gid('li_btn').onclick=()=>{
+  const email=gid('li_email').value.trim().toLowerCase(), pass=gid('li_pass').value;
+  const remember=gid('li_rem').checked;
+  const users=S.get('USERS',[]);
+  const u=users.find(x=>x.email===email && x.pass===pass);
+  if(!u) return msg('Invalid credentials.');
+  S.set('SESSION',{email:u.email,role:u.role,name:u.name,ts:Date.now(), remember});
+  msg('Welcome back. Redirecting...'); setTimeout(()=> location.href='index.html', 400);
+};
+</script>
+</body>
+</html>
