@@ -47,6 +47,7 @@ input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px soli
     <div class="cap">Core</div>
     <button data-sec="tasks">📋 Tasks</button>
     <button class="active" data-sec="research">🔎 Research</button>
+    <button data-sec="dpdp">🛡️ DPDP Audit</button>
     <button data-sec="evidence">🧾 Evidence (PDF OCR)</button>
     <button data-sec="acts">📚 Bare Acts</button>
     <button data-sec="files">📁 Files</button>
@@ -80,6 +81,46 @@ input,select,textarea{width:100%;padding:12px;border-radius:12px;border:1px soli
         <h3>Results</h3>
         <textarea id="rs_out" style="min-height:320px"></textarea>
         <div class="toolbar" style="margin-top:8px"><button class="btn" id="rs_export">Export .txt</button></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="dpdp" class="section">
+    <div class="grid grid-2">
+      <div class="card">
+        <h3>DPDP Act Audit Inputs</h3>
+        <div class="grid">
+          <div><label>Organization Name</label><input id="dp_org" placeholder="Acme Pvt Ltd"></div>
+          <div><label>Audit Date</label><input id="dp_date" type="date"></div>
+          <div><label>Auditor</label><input id="dp_auditor" placeholder="Compliance Team"></div>
+          <div><label>Data Fiduciary Type</label>
+            <select id="dp_fiduciary">
+              <option>Regular Data Fiduciary</option>
+              <option>Potential Significant Data Fiduciary</option>
+            </select>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label><input type="checkbox" id="dp_c1"> Consent notice is clear, itemized, and available in supported languages.</label><br>
+          <label><input type="checkbox" id="dp_c2"> Consent capture is explicit and logged with timestamp/proof.</label><br>
+          <label><input type="checkbox" id="dp_c3"> Purpose limitation and data minimization are implemented in workflows.</label><br>
+          <label><input type="checkbox" id="dp_c4"> Data principal rights process exists (access/correction/erasure/grievance).</label><br>
+          <label><input type="checkbox" id="dp_c5"> Consent manager and withdrawal mechanism are available and documented.</label><br>
+          <label><input type="checkbox" id="dp_c6"> Personal data breach process and escalation matrix are defined and tested.</label><br>
+          <label><input type="checkbox" id="dp_c7"> Vendor contracts include DPDP-aligned obligations and breach clauses.</label><br>
+          <label><input type="checkbox" id="dp_c8"> Retention/deletion schedule and proof of disposal are maintained.</label><br>
+          <label><input type="checkbox" id="dp_c9"> Security controls are documented (access, encryption, backups, logs).</label><br>
+          <label><input type="checkbox" id="dp_c10"> Child data / guardian consent controls exist where applicable.</label>
+        </div>
+        <div style="margin-top:8px"><label>Notes</label><textarea id="dp_notes" placeholder="Add implementation findings, gaps, system names, owners..."></textarea></div>
+        <div class="toolbar" style="margin-top:8px">
+          <button class="btn primary" id="dp_generate">Generate Audit Report</button>
+          <button class="btn" id="dp_export">Export .txt</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>DPDP Audit Report</h3>
+        <textarea id="dp_report" style="min-height:420px" placeholder="Your generated report will appear here..."></textarea>
       </div>
     </div>
   </section>
@@ -744,6 +785,85 @@ if(gid('btn_offline')) gid('btn_offline').onclick=()=>{ caches.keys().then(keys=
   const session = JSON.parse(localStorage.getItem('SESSION')||'null');
   const hdr = document.getElementById('hdr_user'); if(hdr && session){ hdr.textContent = `${session.role} — ${session.name||session.email}`; }
 })();
+
+// ===== DPDP Act Audit Report Generator =====
+function dpdpFindings(){
+  return [
+    {id:'dp_c1', title:'Consent Notice'},
+    {id:'dp_c2', title:'Consent Proof'},
+    {id:'dp_c3', title:'Purpose Limitation'},
+    {id:'dp_c4', title:'Data Principal Rights'},
+    {id:'dp_c5', title:'Withdrawal & Consent Manager'},
+    {id:'dp_c6', title:'Breach Response'},
+    {id:'dp_c7', title:'Processor/Vendor Controls'},
+    {id:'dp_c8', title:'Retention & Deletion'},
+    {id:'dp_c9', title:'Security Safeguards'},
+    {id:'dp_c10', title:'Child Data Controls'}
+  ];
+}
+function dpdpGenerateReport(){
+  const org = (gid('dp_org')?.value || 'Not specified').trim();
+  const date = gid('dp_date')?.value || new Date().toISOString().slice(0,10);
+  const auditor = (gid('dp_auditor')?.value || 'Not specified').trim();
+  const fiduciary = gid('dp_fiduciary')?.value || 'Regular Data Fiduciary';
+  const notes = (gid('dp_notes')?.value || '').trim();
+  const checks = dpdpFindings().map(x=>({title:x.title, ok:!!gid(x.id)?.checked}));
+  const passed = checks.filter(c=>c.ok).length;
+  const total = checks.length;
+  const score = Math.round((passed/total)*100);
+  let risk = 'High';
+  if(score >= 80) risk = 'Low';
+  else if(score >= 50) risk = 'Medium';
+
+  const gaps = checks.filter(c=>!c.ok);
+  const actionLines = gaps.length ? gaps.map((g,i)=>`${i+1}. Close gap in ${g.title} with owner and target date.`) : ['1. Maintain controls and perform quarterly review.'];
+  const controlLines = checks.map((c,i)=>`${i+1}. ${c.title}: ${c.ok ? 'Compliant' : 'Gap Identified'}`);
+
+  const report = [
+    'DPDP ACT AUDIT REPORT',
+    '=====================',
+    '',
+    `Organization: ${org}`,
+    `Audit Date: ${date}`,
+    `Auditor: ${auditor}`,
+    `Data Fiduciary Type: ${fiduciary}`,
+    '',
+    'Executive Summary',
+    '-----------------',
+    `Compliance Score: ${score}% (${passed}/${total} controls)`,
+    `Residual Risk Rating: ${risk}`,
+    '',
+    'Control-by-Control Status',
+    '-------------------------',
+    ...controlLines,
+    '',
+    'Priority Remediation Plan',
+    '-------------------------',
+    ...actionLines,
+    '',
+    'Auditor Notes',
+    '-------------',
+    notes || 'No additional notes.',
+    '',
+    'Disclaimer: This is an internal readiness report template and not legal advice.'
+  ].join('\n');
+
+  gid('dp_report').value = report;
+}
+if(gid('dp_generate')){
+  gid('dp_generate').onclick = ()=>{ dpdpGenerateReport(); toast('DPDP audit report generated'); };
+}
+if(gid('dp_export')){
+  gid('dp_export').onclick = ()=>{
+    const txt = gid('dp_report')?.value || '';
+    if(!txt.trim()) return toast('Generate report first');
+    const blob = new Blob([txt], {type:'text/plain'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'dpdp-audit-report.txt'; a.click();
+    setTimeout(()=>URL.revokeObjectURL(url), 500);
+  };
+}
 
 </script>
 </body>
